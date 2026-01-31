@@ -194,6 +194,9 @@ local Library = {
     MinSize = Vector2.new(480, 360),
     DPIScale = 1,
     CornerRadius = 4,
+    Invisible = 0,
+
+
 
     IsLightTheme = false,
     Scheme = {
@@ -211,7 +214,7 @@ local Library = {
 
     Registry = {},
     Scales = {},
-Transparency = 1,
+
     ImageManager = CustomImageManager,
 }
 
@@ -330,7 +333,6 @@ local Templates = {
         ClearTextOnFocus = true,
         Placeholder = "",
         AllowEmpty = true,
-        
         EmptyReset = "
 
         Callback = function() end,
@@ -940,6 +942,57 @@ function Library:UpdateColorsUsingRegistry()
     end
 end
 
+
+function Library:SetInvisible(Value)
+    Library.Invisible = math.clamp(math.floor(Value * 10 + 0.5) / 10, 0, 1)
+    Library:UpdateTransparency()
+end
+
+function Library:UpdateTransparency()
+    for Instance, Properties in Library.Registry do
+        if Instance:IsA("GuiObject") then
+            if Properties.BackgroundColor3 then
+                local OriginalTransparency = Instance:GetAttribute("OriginalBackgroundTransparency")
+                if OriginalTransparency == nil then
+                    Instance:SetAttribute("OriginalBackgroundTransparency", Instance.BackgroundTransparency)
+                    OriginalTransparency = Instance.BackgroundTransparency
+                end
+                Instance.BackgroundTransparency = math.clamp(OriginalTransparency + Library.Invisible, 0, 1)
+            end
+        end
+    end
+end
+
+
+local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
+    local ThemeProperties = Library.Registry[Instance] or {}
+
+    for key, value in Table do
+        if ThemeProperties[key] then
+            ThemeProperties[key] = nil
+        
+        elseif key ~= "Text" then
+            local SchemeValue = GetSchemeValue(value)
+
+            if SchemeValue or typeof(value) == "function" then
+                ThemeProperties[key] = value
+                value = SchemeValue or value()
+            end
+        end
+
+        Instance[key] = value
+    end
+
+    
+    if Instance:IsA("GuiObject") and Instance:GetAttribute("OriginalBackgroundTransparency") == nil then
+        Instance:SetAttribute("OriginalBackgroundTransparency", Instance.BackgroundTransparency)
+    end
+
+    if GetTableSize(ThemeProperties) > 0 then
+        Library.Registry[Instance] = ThemeProperties
+    end
+end
+
 function Library:SetDPIScale(DPIScale: number)
     Library.DPIScale = DPIScale / 100
     Library.MinSize = Library.OriginalMinSize * Library.DPIScale
@@ -956,35 +1009,6 @@ function Library:SetDPIScale(DPIScale: number)
 
     for _, Notification in Library.Notifications do
         Notification:Resize()
-    end
-end
-function Library:SetTransparency(Transparency: number)
-    assert(typeof(Transparency) == "number", "Transparency must be a number between 0 and 1.")
-    assert(Transparency >= 0 and Transparency <= 1, "Transparency must be between 0 and 1.")
-    
-    Library.Transparency = Transparency
-    
-    
-    if not Library.ScreenGui or not Library.ScreenGui.Parent then
-        return
-    end
-    
-    
-    
-    if MainFrame and typeof(MainFrame) == "Instance" and MainFrame:IsA("GuiBase2d") then
-        MainFrame.BackgroundTransparency = 1 - Transparency
-    end
-    
-    
-    for _, child in pairs(Library.ScreenGui:GetDescendants()) do
-        if child:IsA("GuiBase2d") then
-            pcall(function()
-                local currentTransparency = child.BackgroundTransparency
-                if currentTransparency < 1 then  
-                    child.BackgroundTransparency = 1 - ((1 - currentTransparency) * Transparency)
-                end
-            end)
-        end
     end
 end
 
