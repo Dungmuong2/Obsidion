@@ -194,6 +194,9 @@ local Library = {
     MinSize = Vector2.new(480, 360),
     DPIScale = 1,
     CornerRadius = 4,
+    Invisible = 0,
+
+
 
     IsLightTheme = false,
     Scheme = {
@@ -936,6 +939,57 @@ function Library:UpdateColorsUsingRegistry()
                 Instance[Property] = SchemeValue or Index()
             end
         end
+    end
+end
+
+
+function Library:SetInvisible(Value)
+    Library.Invisible = math.clamp(math.floor(Value * 10 + 0.5) / 10, 0, 1)
+    Library:UpdateTransparency()
+end
+
+function Library:UpdateTransparency()
+    for Instance, Properties in Library.Registry do
+        if Instance:IsA("GuiObject") then
+            if Properties.BackgroundColor3 then
+                local OriginalTransparency = Instance:GetAttribute("OriginalBackgroundTransparency")
+                if OriginalTransparency == nil then
+                    Instance:SetAttribute("OriginalBackgroundTransparency", Instance.BackgroundTransparency)
+                    OriginalTransparency = Instance.BackgroundTransparency
+                end
+                Instance.BackgroundTransparency = math.clamp(OriginalTransparency + Library.Invisible, 0, 1)
+            end
+        end
+    end
+end
+
+
+local function FillInstance(Table: { [string]: any }, Instance: GuiObject)
+    local ThemeProperties = Library.Registry[Instance] or {}
+
+    for key, value in Table do
+        if ThemeProperties[key] then
+            ThemeProperties[key] = nil
+        
+        elseif key ~= "Text" then
+            local SchemeValue = GetSchemeValue(value)
+
+            if SchemeValue or typeof(value) == "function" then
+                ThemeProperties[key] = value
+                value = SchemeValue or value()
+            end
+        end
+
+        Instance[key] = value
+    end
+
+    -- 투명도 초기값 저장
+    if Instance:IsA("GuiObject") and Instance:GetAttribute("OriginalBackgroundTransparency") == nil then
+        Instance:SetAttribute("OriginalBackgroundTransparency", Instance.BackgroundTransparency)
+    end
+
+    if GetTableSize(ThemeProperties) > 0 then
+        Library.Registry[Instance] = ThemeProperties
     end
 end
 
