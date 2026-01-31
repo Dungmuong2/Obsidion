@@ -958,28 +958,32 @@ function Library:SetDPIScale(DPIScale: number)
         Notification:Resize()
     end
 end
-
 function Library:SetTransparency(Transparency: number)
     assert(typeof(Transparency) == "number", "Transparency must be a number between 0 and 1.")
     assert(Transparency >= 0 and Transparency <= 1, "Transparency must be between 0 and 1.")
     
     Library.Transparency = Transparency
     
-    if Library.ScreenGui and Library.ScreenGui.Parent then
-        
-        for _, child in ipairs(Library.ScreenGui:GetDescendants()) do
-            if child:IsA("GuiBase2d") then
-                pcall(function()
-                    if child.Name ~= "Obsidian" and child.Parent.Name ~= "Obsidian" then
-                        child.BackgroundTransparency = 1 - ((1 - child.BackgroundTransparency) * Transparency)
-                    end
-                end)
-            end
-        end
-        
-        
-        if Library.Toggled and MainFrame then
-            MainFrame.BackgroundTransparency = 1 - Transparency
+    
+    if not Library.ScreenGui or not Library.ScreenGui.Parent then
+        return
+    end
+    
+    
+    
+    if MainFrame and typeof(MainFrame) == "Instance" and MainFrame:IsA("GuiBase2d") then
+        MainFrame.BackgroundTransparency = 1 - Transparency
+    end
+    
+    
+    for _, child in pairs(Library.ScreenGui:GetDescendants()) do
+        if child:IsA("GuiBase2d") then
+            pcall(function()
+                local currentTransparency = child.BackgroundTransparency
+                if currentTransparency < 1 then  
+                    child.BackgroundTransparency = 1 - ((1 - currentTransparency) * Transparency)
+                end
+            end)
         end
     end
 end
